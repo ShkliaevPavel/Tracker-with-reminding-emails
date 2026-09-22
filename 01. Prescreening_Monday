@@ -1,0 +1,96 @@
+function sendPrescreeningEmails_Monday() { 
+  var sheet = SpreadsheetApp.openById("1x4hSCHD3WMQa1T_7EPPEb1C_qDR6A42w-iZfAXmhUVs").getSheetByName("Pre-screening tracker");
+  var data = sheet.getDataRange().getValues();
+  var headers = data[0];
+  var siteIndex = headers.indexOf("Please choose your site number"); 
+  var timestampIndex = headers.indexOf("Date of form submission");
+  var verificationCodeIndex = headers.indexOf("Please enter verification code");
+  
+  var siteData = {};
+  
+  // Define sites to be excluded from emails
+  var excludedSites = ["1210", "1211","1601","1604"];
+  
+  // Define recipient groups with at least 5 recipients each
+  var recipients = {
+    "1208": "csapo.alexandra.klaudia@semmelweis.hu, gyongyi.gesztelyi@viacrystal.com",
+    "1209": "vrancsik.zsofia@med.unideb.hu, gyongyi.gesztelyi@viacrystal.com",
+    "1210": "pavel.shkliaev@viacrystal.com",
+    "1211": "valeria.montsko@gmail.com, gyongyi.gesztelyi@viacrystal.com",
+    "1212": "kalomistakrisztina@gmail.com, gyongyi.gesztelyi@viacrystal.com",
+    "1213": "sara.ilonczai@clinexpert.hu, gyongyi.gesztelyi@viacrystal.com",
+    "1601": "nemstep@gmail.com, ivan.ugrinovic@viacrystal.com",
+    "1603": "vucurevicbojan75@gmail.com, jovanpetrovic1997@gmail.com, ivan.ugrinovic@viacrystal.com",
+    "1604": "drkoncar@gmail.com, anicailic87@yahoo.com, ivan.ugrinovic@viacrystal.com",
+    "1605": "zvezdan.stefanovic@gmail.com, uros92jankovic@gmail.com, ivan.ugrinovic@viacrystal.com",
+    "1606": "dragankg984@gmail.com, vanja.skg@gmail.com, ivan.ugrinovic@viacrystal.com"
+  };
+
+  // Group data by site number and find the latest entry
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var siteNumber = row[siteIndex].toString();
+    var timestamp = new Date(row[timestampIndex]);
+    
+    if (!siteData[siteNumber] || timestamp > siteData[siteNumber].timestamp) {
+      siteData[siteNumber] = {
+        timestamp: timestamp,
+        row: row
+      };
+    }
+  }
+  
+  // Prepare and send emails
+  for (var site in siteData) {
+    if (!recipients[site] || excludedSites.includes(site)) continue; // Skip if no recipients are defined or site is excluded
+    
+    var latestRow = siteData[site].row;
+    var emailBody = "";
+    //var subject = "MRXC-302 Please fill out the Prescreening form - Site " + site;
+
+    // Set the email subject based on the site number
+    var subject = "";
+    if (["1208", "1209", "1210", "1211", "1212", "1213"].includes(site)) {
+      subject = "MRXC-302 Kérjük, töltse ki az előszűrési űrlapot - Site " + site;
+    } else {
+      subject = "MRXC-302 Zamolili bismo Vas da popunite Prescreening formular - Site " + site;
+    }
+    
+    if (["1208", "1209", "1210", "1211", "1212", "1213"].includes(site)) {
+      emailBody = "<p>Tisztelt Vizsgálati Csapat!</p>" +
+                  "<p>Kérjük, szíveskedjenek válaszolni néhány kérdésre az elmúlt héten vizsgálóhelyükön végzett előszűrési tevékenységekkel kapcsolatban.</p>" +
+                  "<p><a href='https://docs.google.com/forms/d/e/1FAIpQLSdSbwcZ0GCLXQq-ATBsGY0f0-QnWAo6QA1Kjiw1TlIGzEw0Mw/viewform?usp=header'>Kérjük, töltsék ki az ŰRLAPOT</a></p>" +
+                  "<p>Amennyiben kérdés merülne fel az űrlap kitöltésével kapcsolatban, kérjük, lépjenek kapcsolatba a CRA-val: gyongyi.gesztelyi@viacrystal.com.</p>" +
+                  "<p>Az előző alkalommal megadott válaszokat lentebb találja:</p>";
+    } else {
+      emailBody = "<p>Dragi clanovi studijskog tima,</p>" +
+                  "<p>Ljubazno vas molimo da odgovorite na nekoliko pitanja u vezi sa aktivnostima pre-skrininga koje su sprovedene na vašem centru tokom protekle nedelje.</p>" +
+                  "<p><a href='https://docs.google.com/forms/d/e/1FAIpQLSdSbwcZ0GCLXQq-ATBsGY0f0-QnWAo6QA1Kjiw1TlIGzEw0Mw/viewform?usp=header'>Molimo popunite obrazac</a></p>" +
+                  "<p>Ako imate bilo kakvih pitanja u vezi sa popunjavanjem obrasca, molim vas kontaktirajte Monitora: ivan.ugrinovic@viacrystal.com.</p>" +
+                  "<p>U nastavku pronađite odgovore date od poslednjeg puta:</p>";
+    }
+    
+    emailBody += "<ul>";
+    for (var j = 0; j < headers.length; j++) {
+      if (headers[j] === "Please enter verification code" || headers[j] === "Please choose your site number") continue; // Exclude "Please enter verification code" and "Site number"
+      
+      var value = latestRow[j];
+      if (headers[j] === "Date of form submission") {
+        var formattedDate = Utilities.formatDate(new Date(value), Session.getScriptTimeZone(), "dd MMM yyyy");
+        emailBody += "<li><strong>" + headers[j] + ":</strong> " + formattedDate + "</li>";
+      } else {
+        emailBody += "<li><strong>" + headers[j] + ":</strong> " + value + "</li>";
+      }
+    }
+    emailBody += "</ul><p>Thank you.</p>";
+    
+    var recipient = recipients[site];
+    
+    MailApp.sendEmail({
+      to: recipient,
+      subject: subject,
+      htmlBody: emailBody
+    });
+  }
+}
+
