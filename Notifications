@@ -1,0 +1,47 @@
+// Constants for source document and recipients
+const SOURCE_SPREADSHEET_ID = "1x4hSCHD3WMQa1T_7EPPEb1C_qDR6A42w-iZfAXmhUVs";
+const SOURCE_SHEET_NAME = "Pre-screening tracker";
+const LINK_TO_SHEET = "https://docs.google.com/spreadsheets/d/1x4hSCHD3WMQa1T_7EPPEb1C_qDR6A42w-iZfAXmhUVs/edit?gid=1698014491#gid=1698014491";
+
+const RECIPIENTS = [
+  "barbara.zsebedics@viacrystal.com"
+];
+
+// Triggered on form submission
+function onFormSubmit_Notification(e) {
+  const sheet = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID).getSheetByName(SOURCE_SHEET_NAME);
+  const lastRow = sheet.getLastRow();
+  const rowData = sheet.getRange(lastRow, 1, 1, sheet.getLastColumn()).getValues()[0];
+  const headers = sheet.getRange(1, 1, 1, sheet.getLastColumn()).getValues()[0];
+  
+  const site = rowData[2];  // Assuming the site name is in the 3rd column
+
+  const subject = `MRXC-302_Prescreening form_New response_Site ${site}`;
+
+  let body = "<html><body>";
+  body += "<p>A new response has been received.</p>";
+  body += "<table border='1' cellspacing='0' cellpadding='5'>";
+  
+  for (let i = 0; i < headers.length; i++) {
+    body += `<tr><td><b>${headers[i]}</b></td><td>${rowData[i]}</td></tr>`;
+  }
+
+  body += "</table>";
+  body += `<p><a href="${LINK_TO_SHEET}">Click here to view all responses</a></p>`;
+  body += "</body></html>";
+
+  MailApp.sendEmail({
+    to: RECIPIENTS.join(","),
+    subject: subject,
+    htmlBody: body
+  });
+}
+
+// Optional: Create the form submit trigger programmatically
+function createTrigger2() {
+  const sheet = SpreadsheetApp.openById(SOURCE_SPREADSHEET_ID).getSheetByName(SOURCE_SHEET_NAME);
+  ScriptApp.newTrigger("onFormSubmit_Notification")
+    .forSpreadsheet(sheet.getParent())
+    .onFormSubmit()
+    .create();
+}
